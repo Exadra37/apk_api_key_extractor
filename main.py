@@ -24,6 +24,18 @@ with open(os.path.join(__location__, LOG_CONFIG_PATH), "r", encoding="utf-8") as
 
 import apk_analyzer
 
+def readJsonFile(filename, default = []):
+    print(f"JSON FILE PATH: {filename}")
+
+    if not os.path.exists(filename):
+        return default
+
+    with open(filename) as file:
+        return json.load(file)
+
+def writeToJsonFile(filename, data):
+    with open(filename, "w") as file:
+        json.dump(data, file, indent = 4)
 
 def clean_resources(apk_path, lock, decoded_apk_output_path, apks_analyzed_dir, remove_apk=False):
     """
@@ -35,8 +47,8 @@ def clean_resources(apk_path, lock, decoded_apk_output_path, apks_analyzed_dir, 
     :param apks_analyzed_dir: where the apk should be moved after analysis; None if it should not be moved
     :param remove_apk: True if the apk should be deleted; ignored if apks_analyzed_dir is not None
     """
-    apk = os.path.basename(apk_path)
     try:
+        apk = os.path.basename(apk_path)
         if os.path.exists(decoded_apk_output_path):
             shutil.rmtree(decoded_apk_output_path)
         else:
@@ -85,6 +97,39 @@ def analyze_apk(apk_path, apks_decoded_dir, apks_analyzed_dir, apktool_path, loc
     clean_resources(apk_path, lock, decoded_output_path, apks_analyzed_dir, not config.save_analyzed_apks)
 
 
+def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, apktool_path):
+    logging.info("Monitoring {0} for apks...".format(apks_dir))
+
+    processed_apks_file = os.path.join(apks_analyzed_dir, 'processed_apks.json')
+
+    processed_apks = readJsonFile(processed_apks_file, {})
+
+    try:
+        while True:
+            apk_path, lock, package_name = apk_analyzer.get_next_apk_by_category(apks_dir, processed_apks)
+            apk_decoded_dir = os.path.join(apks_decoded_dir, package_name)
+
+            if apk_path in processed_apks:
+                continue
+
+            if lock is not None:
+                logging.info("Detected {0}".format(apk_path))
+                analyze_apk(apk_path, apk_decoded_dir, apks_analyzed_dir, apktool_path, lock)
+
+                if apk_path in processed_apks:
+                    processed_apks[apk_path] += 1
+                else:
+                    processed_apks[apk_path] = 1
+
+                writeToJsonFile(processed_apks_file, processed_apks)
+
+                logging.info("{0} analyzed".format(apk_path))
+            else:
+                time.sleep(1)
+
+    except KeyboardInterrupt:
+        print('\nInterrupted!')
+
 def monitor_apks_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, apktool_path):
     logging.info("Monitoring {0} for apks...".format(apks_dir))
     try:
@@ -109,6 +154,9 @@ def main():
                         default=False, help='Print debug information')
     parser.add_argument('--analyze-apk', action='store', dest='apk_path',
                         help='Analyze a single apk to find hidden API Keys')
+    parser.add_argument('--monitor-apks-category', action='store', dest='apks_category_path',
+                        help='Monitors the configured category apks folder for new apks. '
+                                            'When a new apk is detected, the file is locked and analysis starts.')
     parser.add_argument('--monitor-apks-folder', action="store_true", dest='boolean_monitor',
                         default=False, help='Monitors the configured apks folder for new apks. '
                                             'When a new apk is detected, the file is locked and analysis starts.')
@@ -123,6 +171,17 @@ def main():
         analyze_apk(results.apk_path, os.path.abspath(config.apks_decoded_dir),
                     None, os.path.abspath(config.apktool))
         return
+
+    elif results.apks_category_path:
+        apks_analyzed_dir = None
+
+        if config.save_analyzed_apks:
+            apks_analyzed_dir = os.path.abspath(config.apks_analyzed_dir)
+
+        monitor_apks_category_folder(os.path.abspath(results.apks_category_path), os.path.abspath(config.apks_decoded_dir),
+                            apks_analyzed_dir, os.path.abspath(config.apktool))
+        return
+
     elif results.boolean_monitor:
         apks_analyzed_dir = None
         if config.save_analyzed_apks:

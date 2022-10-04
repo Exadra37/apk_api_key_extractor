@@ -1,0 +1,5 @@
+apks/
+__pycache__/
+apktool.jar
+*.json*
+*.log

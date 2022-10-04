@@ -1,26 +1,64 @@
-# Pull base image.
-FROM ubuntu:18.04
+ARG TAG=18.04
 
-# Install.
-RUN \
-  apt-get update && \
-  apt-get install -y python3 && \
-  apt-get install -y git python3-pip default-jdk && \
-  git clone --recursive https://github.com/alessandrodd/apk_api_key_extractor.git && \
-  cd apk_api_key_extractor && \
-  cp config.example.yml config.yml && \
-  pip3 install -r requirements.txt 
+FROM ubuntu:${TAG}
 
-# Add files.
-COPY apks /apk_api_key_extractor/apks/
+ARG CONTAINER_USER="developer"
+ARG LANGUAGE_CODE="en"
+ARG COUNTRY_CODE="GB"
+ARG ENCODING="UTF-8"
 
-# Set environment variables.
-ENV HOME /
+ARG LOCALE_STRING="${LANGUAGE_CODE}_${COUNTRY_CODE}"
+ARG LOCALIZATION="${LOCALE_STRING}.${ENCODING}"
+
+ARG OH_MY_ZSH_THEME="bira"
+
+RUN apt update && apt -y upgrade && \
+    apt -y install \
+        locales \
+        git \
+        curl \
+        inotify-tools \
+        python3 \
+        python3-pip \
+        default-jdk \
+        zsh && \
+
+        echo "${LOCALIZATION} ${ENCODING}" > /etc/locale.gen && \
+        locale-gen "${LOCALIZATION}" && \
+
+        useradd -m -u 1000 -s /usr/bin/zsh "${CONTAINER_USER}" && \
+
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" && \
+
+        cp -v /root/.zshrc /home/"${CONTAINER_USER}"/.zshrc && \
+        cp -rv /root/.oh-my-zsh /home/"${CONTAINER_USER}"/.oh-my-zsh && \
+        sed -i "s/\/root/\/home\/${CONTAINER_USER}/g" /home/"${CONTAINER_USER}"/.zshrc && \
+        sed -i s/ZSH_THEME=\"robbyrussell\"/ZSH_THEME=\"${OH_MY_ZSH_THEME}\"/g /home/${CONTAINER_USER}/.zshrc && \
+        mkdir /home/"${CONTAINER_USER}"/workspace && \
+        chown -R "${CONTAINER_USER}":"${CONTAINER_USER}" /home/"${CONTAINER_USER}"
+
+ENV USER ${CONTAINER_USER}
+ENV LANG "${LOCALIZATION}"
+ENV LANGUAGE "${LOCALE_STRING}:${LANGUAGE_CODE}"
+ENV PATH=/home/${CONTAINER_USER}/.local/bin:${PATH}
+ENV LC_ALL "${LOCALIZATION}"
+
+USER ${CONTAINER_USER}
+
+RUN mkdir -p /home/${CONTAINER_USER}/.local/bin
+
+# ENV HOME /
 ENV PATH /usr/bin:$PATH
 
-# Set workdir
-WORKDIR /apk_api_key_extractor
+WORKDIR /home/${CONTAINER_USER}/workspace
 
-# Define default command.
-CMD python3 /apk_api_key_extractor/main.py --monitor-apks-folder
+ADD requirements.txt requirements.txt
 
+RUN pip3 install -r requirements.txt
+
+RUN mkdir -p \
+    /home/${CONTAINER_USER}/.local/share/apktool/framework \
+    /home/${CONTAINER_USER}/apks_decoded \
+    /home/${CONTAINER_USER}/apks_analyzed
+
+CMD ["zsh"]

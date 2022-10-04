@@ -39,6 +39,62 @@ class ApkAnalysisError(Exception):
     def __str__(self):
         return repr(self.value)
 
+def get_next_apk_by_category(apks_path, processed_apks):
+    """
+    Gets the first available (not-locked) apk files and locks it
+
+    :param apks_path: directory to scan
+    :return: a tuple containing the apk's path and the locked lock
+    :rtype: (str, lockfile.LockFile)
+    """
+
+    print(f"apks_path: {apks_path}")
+
+    try:
+        apks_dirs = os.listdir(apks_path)
+    except FileNotFoundError:
+        # folder doesn't exist
+        return None, None, None
+
+    for package_name in apks_dirs:
+        print(f"package_name: {package_name}")
+
+        apk_dir = os.path.join(apks_path, package_name)
+
+        apks = os.listdir(apk_dir)
+
+        for apk in apks:
+            print(f"apk: {apk}")
+
+            if not apk.endswith(".apk"):
+                continue
+
+            apk_path = os.path.join(apk_dir, apk)
+            print(f"apk path: {apk_path}")
+
+            if apk_path in processed_apks and processed_apks[apk_path] > 0:
+                continue
+
+            try:
+                # lock file should not exist
+                filename = apk_path + LOCK_PREFIX
+
+                lock = Lock(filename, lifetime=datetime.timedelta(seconds=6000))  # expires in 10 minutes
+
+                if not lock.is_locked:
+                    lock.lock(timeout=datetime.timedelta(milliseconds=350))
+
+                    if os.path.isfile(apk_path):  # the original file could be deleted in the meantime
+                        return apk_path, lock, package_name
+
+                    if lock.is_locked:
+                        lock.unlock()
+
+            except (AlreadyLockedError, TimeOutError):
+                # some other process is analyzing the file; go ahead and look for another file
+                pass
+
+    return None, None, None
 
 def get_next_apk(apks_dir):
     """
