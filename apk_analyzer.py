@@ -61,6 +61,9 @@ def get_next_apk_by_category(apks_path, processed_apks):
 
         apk_dir = os.path.join(apks_path, package_name)
 
+        if not os.path.isdir(apk_dir):
+            continue
+
         apks = os.listdir(apk_dir)
 
         for apk in apks:

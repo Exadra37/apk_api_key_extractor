@@ -53,13 +53,15 @@ def clean_resources(apk_path, lock, decoded_apk_output_path, apks_analyzed_dir, 
             shutil.rmtree(decoded_apk_output_path)
         else:
             logging.error("Unable to find decoded folder for {0}".format(apk_path))
-        if apks_analyzed_dir:
-            if not os.path.exists(apks_analyzed_dir):
-                os.mkdir(apks_analyzed_dir)
+
+        # @TODO path needs to be by app id folder and maybe also category
+        # if apks_analyzed_dir:
+        #     if not os.path.exists(apks_analyzed_dir):
+        #         os.mkdir(apks_analyzed_dir)
             # either way, move the apk out of apk dir
-            shutil.move(apk_path, os.path.join(apks_analyzed_dir, apk))
-        elif remove_apk:
-            os.remove(apk_path)
+            # shutil.move(apk_path, os.path.join(apks_analyzed_dir, apk))
+        # elif remove_apk:
+        #     os.remove(apk_path)
     finally:
         if lock:
             # unlock and clean temp files; cleaning should not be necessary
