@@ -109,10 +109,16 @@ def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, 
     try:
         while True:
             apk_path, lock, package_name = apk_analyzer.get_next_apk_by_category(apks_dir, processed_apks)
-            apk_decoded_dir = os.path.join(apks_decoded_dir, package_name)
+
+            if apk_path is None or lock is None or package_name is None:
+                time.sleep(10)
+                continue
 
             if apk_path in processed_apks:
+                time.sleep(10)
                 continue
+
+            apk_decoded_dir = os.path.join(apks_decoded_dir, package_name)
 
             if lock is not None:
                 logging.info("Detected {0}".format(apk_path))
@@ -127,7 +133,7 @@ def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, 
 
                 logging.info("{0} analyzed".format(apk_path))
             else:
-                time.sleep(1)
+                time.sleep(10)
 
     except KeyboardInterrupt:
         print('\nInterrupted!')
