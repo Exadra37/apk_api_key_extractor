@@ -310,7 +310,7 @@ def analyze_decoded_apk(decoded_apk_folder):
     extracted = extract_metadata_resource(manifest_parser)
     extracted += extract_strings_resource(decoded_apk_folder)
     extracted += extract_smali_strings(decoded_apk_folder, package, manifest_parser)
-    extracted += extract_native_strings(decoded_apk_folder)
+    # extracted += extract_native_strings(decoded_apk_folder)
     apikey_strings = analyze_strings(extracted)
     apikey_postfiltered = []
     for mystring in apikey_strings:

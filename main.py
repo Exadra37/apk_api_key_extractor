@@ -49,10 +49,10 @@ def clean_resources(apk_path, lock, decoded_apk_output_path, apks_analyzed_dir, 
     """
     try:
         apk = os.path.basename(apk_path)
-        if os.path.exists(decoded_apk_output_path):
-            shutil.rmtree(decoded_apk_output_path)
-        else:
-            logging.error("Unable to find decoded folder for {0}".format(apk_path))
+        # if os.path.exists(decoded_apk_output_path):
+        #     shutil.rmtree(decoded_apk_output_path)
+        # else:
+        #     logging.error("Unable to find decoded folder for {0}".format(apk_path))
 
         # @TODO path needs to be by app id folder and maybe also category
         # if apks_analyzed_dir:
@@ -98,6 +98,35 @@ def analyze_apk(apk_path, apks_decoded_dir, apks_analyzed_dir, apktool_path, loc
         logging.error(str(e))
     clean_resources(apk_path, lock, decoded_output_path, apks_analyzed_dir, not config.save_analyzed_apks)
 
+def analyze_apk_category(category, apk_path, apks_decoded_dir, apks_analyzed_dir, apktool_path, lock=None):
+    apk = os.path.basename(apk_path)
+    decoded_output_path = os.path.join(apks_decoded_dir, apk)
+    api_keys_dump_file = os.path.join(apks_analyzed_dir, f"category_{category}_secrets.json")
+    print('---> api_keys_dump_file: ', api_keys_dump_file)
+
+    try:
+        apikeys, all_strings, package, version_code, version_name = apk_analyzer.analyze_apk(apk_path,
+                                                                                             decoded_output_path,
+                                                                                             apktool_path)
+        if apikeys:
+            dump = None
+            if config.dump_location == "console":
+                dump = ConsoleDump()
+            elif config.dump_location == "jsonlines":
+                dump = JsonlinesDump()
+                dump.setDumpFileForApiKeys(api_keys_dump_file)
+            elif config.dump_location == "mongodb":
+                dump = MongoDBDump()
+            else:
+                print("Unrecognized dump location: {0}".format(config.dump_location))
+                exit(1)
+            dump.dump_apikeys(apikeys, package, version_code, version_name)
+            if config.dump_all_strings:
+                dump.dump_strings(all_strings)
+    except apk_analyzer.ApkAnalysisError as e:
+        logging.error(str(e))
+    clean_resources(apk_path, lock, decoded_output_path, apks_analyzed_dir, not config.save_analyzed_apks)
+
 
 def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, apktool_path):
     logging.info("Monitoring {0} for apks...".format(apks_dir))
@@ -105,6 +134,8 @@ def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, 
     processed_apks_file = os.path.join(apks_analyzed_dir, 'processed_apks.json')
 
     processed_apks = readJsonFile(processed_apks_file, {})
+
+    category = os.path.basename(apks_dir)
 
     try:
         while True:
@@ -122,7 +153,7 @@ def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, 
 
             if lock is not None:
                 logging.info("Detected {0}".format(apk_path))
-                analyze_apk(apk_path, apk_decoded_dir, apks_analyzed_dir, apktool_path, lock)
+                analyze_apk_category(category, apk_path, apk_decoded_dir, apks_analyzed_dir, apktool_path, lock)
 
                 if apk_path in processed_apks:
                     processed_apks[apk_path] += 1
@@ -140,6 +171,8 @@ def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, 
 
 def monitor_apks_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, apktool_path):
     logging.info("Monitoring {0} for apks...".format(apks_dir))
+    apk = os.path.basename(apk_path)
+
     try:
         while True:
             apk_path, lock = apk_analyzer.get_next_apk(apks_dir)

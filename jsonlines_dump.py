@@ -18,6 +18,9 @@ class JsonlinesDump(AbstractDump):
         self.dest = os.path.abspath(config.jsonlines["dump_file"])
         self.strings_dest = os.path.abspath(config.jsonlines["strings_file"])
 
+    def setDumpFileForApiKeys(self, path):
+        self.dest = path
+
     def dump_apikeys(self, entries, package, version_code, version_name):
         lock_acquired = False
         while not lock_acquired:
