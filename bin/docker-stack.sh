@@ -75,10 +75,11 @@ Main() {
 
   sudo docker run \
     --rm \
+    --cpus 3 \
     ${BACKGROUND_MODE} \
     --user ${CONTAINER_USER} \
     --env-file .env \
-    --volume "${PWD}":/home/developer/workspace \
+    --volume "${PWD}/../":/home/developer/workspace \
     --volume "${PWD}/apks_analyzed":/home/developer/apks_analyzed \
     --volume "${PWD}/apks_decoded":/home/developer/apks_decoded \
     --volume $PWD/../python-cli/data/apks/:/home/developer/apks \

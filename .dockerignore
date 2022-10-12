@@ -3,3 +3,5 @@ __pycache__/
 apktool.jar
 *.json*
 *.log
+apks_decoded/
+apks_analyzed/
