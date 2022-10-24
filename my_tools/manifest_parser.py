@@ -61,6 +61,10 @@ class AndroidManifestXmlParser(object):
             for action_row in action_rows:
                 if action_row.get("{" + str(self.root.nsmap.get("android")) + "}name") == "android.intent.action.MAIN":
                     activity_name = row.get("{" + str(self.root.nsmap.get("android")) + "}targetActivity")
+
+                    if activity_name is None:
+                        return None
+
                     if activity_name.startswith("."):
                         return self.get_package() + activity_name
                     elif "." not in activity_name:

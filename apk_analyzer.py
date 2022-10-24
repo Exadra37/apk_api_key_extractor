@@ -48,6 +48,7 @@ def get_next_apk_by_category(apks_path, processed_apks):
     :rtype: (str, lockfile.LockFile)
     """
 
+    print("\n------------------------ Find Next APK Package Name ------------------------\n")
     print(f"apks_path: {apks_path}")
 
     try:

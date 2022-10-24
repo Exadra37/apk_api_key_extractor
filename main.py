@@ -98,16 +98,12 @@ def analyze_apk(apk_path, apks_decoded_dir, apks_analyzed_dir, apktool_path, loc
         logging.error(str(e))
     clean_resources(apk_path, lock, decoded_output_path, apks_analyzed_dir, not config.save_analyzed_apks)
 
-def analyze_apk_category(category, apk_path, apks_decoded_dir, apks_analyzed_dir, apktool_path, lock=None):
+def analyze_apk_category(apk_path, decoded_output_path, apks_analyzed_dir, apktool_path, api_keys_dump_file, lock=None):
     apk = os.path.basename(apk_path)
-    decoded_output_path = os.path.join(apks_decoded_dir, apk)
-    api_keys_dump_file = os.path.join(apks_analyzed_dir, f"category_{category}_secrets.json")
-    print('---> api_keys_dump_file: ', api_keys_dump_file)
 
     try:
-        apikeys, all_strings, package, version_code, version_name = apk_analyzer.analyze_apk(apk_path,
-                                                                                             decoded_output_path,
-                                                                                             apktool_path)
+        apikeys, all_strings, package, version_code, version_name = apk_analyzer.analyze_apk(apk_path, decoded_output_path, apktool_path)
+
         if apikeys:
             dump = None
             if config.dump_location == "console":
@@ -128,14 +124,40 @@ def analyze_apk_category(category, apk_path, apks_decoded_dir, apks_analyzed_dir
     clean_resources(apk_path, lock, decoded_output_path, apks_analyzed_dir, not config.save_analyzed_apks)
 
 
-def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, apktool_path):
+def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, apktool_path, file_suffix = None):
     logging.info("Monitoring {0} for apks...".format(apks_dir))
 
-    processed_apks_file = os.path.join(apks_analyzed_dir, 'processed_apks.json')
+    check_file_exists = True
+
+    if file_suffix is None:
+        check_file_exists = False
+        file_suffix = int(time.time())
+
+    country = os.path.basename(apks_dir)
+    category = os.path.basename(os.path.dirname(apks_dir))
+
+    print("country: ", country)
+    print("category: ", category)
+
+    processed_apks_file = os.path.join(apks_analyzed_dir, f"processed-apks-progress-{category}-{country}-{file_suffix}.json")
+    api_keys_dump_file = os.path.join(apks_analyzed_dir, f"{category}-{country}-secrets-{file_suffix}.json")
+
+    if check_file_exists:
+        if not os.path.exists(processed_apks_file):
+            print(f"\n---> Processed APKs Progress file not found: {processed_apks_file}")
+            return
+
+        if not os.path.exists(api_keys_dump_file):
+            print(f"\n---> API Keys Dump File not found: {api_keys_dump_file}")
+            return
+
+    print('---> processed_apks_file: ', processed_apks_file)
+    print('---> api_keys_dump_file: ', api_keys_dump_file)
 
     processed_apks = readJsonFile(processed_apks_file, {})
 
-    category = os.path.basename(apks_dir)
+    category_path = os.path.join(apks_decoded_dir, category)
+    country_path = os.path.join(category_path, country)
 
     try:
         while True:
@@ -149,11 +171,12 @@ def monitor_apks_category_folder(apks_dir, apks_decoded_dir, apks_analyzed_dir, 
                 time.sleep(10)
                 continue
 
-            apk_decoded_dir = os.path.join(apks_decoded_dir, package_name)
-
             if lock is not None:
                 logging.info("Detected {0}".format(apk_path))
-                analyze_apk_category(category, apk_path, apk_decoded_dir, apks_analyzed_dir, apktool_path, lock)
+
+                apk_decoded_dir = os.path.join(country_path, package_name)
+
+                analyze_apk_category(apk_path, apk_decoded_dir, apks_analyzed_dir, apktool_path, api_keys_dump_file, lock)
 
                 if apk_path in processed_apks:
                     processed_apks[apk_path] += 1
@@ -201,10 +224,17 @@ def main():
     parser.add_argument('--monitor-apks-folder', action="store_true", dest='boolean_monitor',
                         default=False, help='Monitors the configured apks folder for new apks. '
                                             'When a new apk is detected, the file is locked and analysis starts.')
+    parser.add_argument('--file-suffix', action='store', dest='file_suffix',
+                        help='Analyze a single apk to find hidden API Keys')
 
     results = parser.parse_args()
 
     # functions that don't need gibberish detector
+
+    file_suffix = None
+
+    if results.file_suffix:
+        file_suffix = results.file_suffix
 
     if results.boolean_debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -220,7 +250,7 @@ def main():
             apks_analyzed_dir = os.path.abspath(config.apks_analyzed_dir)
 
         monitor_apks_category_folder(os.path.abspath(results.apks_category_path), os.path.abspath(config.apks_decoded_dir),
-                            apks_analyzed_dir, os.path.abspath(config.apktool))
+                            apks_analyzed_dir, os.path.abspath(config.apktool), file_suffix)
         return
 
     elif results.boolean_monitor:
