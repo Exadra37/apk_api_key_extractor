@@ -72,6 +72,10 @@ Main() {
   # EXECUTION
   ##############################################################################
 
+    # --volume "${PWD}/apks_analyzed":/home/developer/apks_analyzed \
+    # --volume "${PWD}/apks_decoded":/home/developer/apks_decoded \
+
+  mkdir -p data/{apks_decoded,apks_analyzed}
 
   sudo docker run \
     --rm \
@@ -79,9 +83,8 @@ Main() {
     ${BACKGROUND_MODE} \
     --user ${CONTAINER_USER} \
     --env-file .env \
-    --volume "${PWD}/../":/home/developer/workspace \
-    --volume "${PWD}/apks_analyzed":/home/developer/apks_analyzed \
-    --volume "${PWD}/apks_decoded":/home/developer/apks_decoded \
+    --volume "${PWD}":/home/developer/workspace \
+    --volume $PWD/../data/apks/:/home/developer/device_apks \
     --volume $PWD/../python-cli/data/apks/:/home/developer/apks \
     "${IMAGE_NAME}" \
     "${COMMAND}" ${@}
