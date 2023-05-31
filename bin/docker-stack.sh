@@ -74,6 +74,7 @@ Main() {
 
     # --volume "${PWD}/apks_analyzed":/home/developer/apks_analyzed \
     # --volume "${PWD}/apks_decoded":/home/developer/apks_decoded \
+    # --volume $PWD/../../data/apks/:/home/developer/device_apks \
 
   mkdir -p data/{apks_decoded,apks_analyzed}
 
@@ -81,11 +82,10 @@ Main() {
     --rm \
     --cpus 3 \
     ${BACKGROUND_MODE} \
+    --workdir /home/developer/workspace/tools/apk_api_key_extractor \
     --user ${CONTAINER_USER} \
     --env-file .env \
-    --volume "${PWD}":/home/developer/workspace \
-    --volume $PWD/../data/apks/:/home/developer/device_apks \
-    --volume $PWD/../python-cli/data/apks/:/home/developer/apks \
+    --volume "${PWD}/../../":/home/developer/workspace \
     "${IMAGE_NAME}" \
     "${COMMAND}" ${@}
 }

@@ -76,6 +76,10 @@ def clean_resources(apk_path, lock, decoded_apk_output_path, apks_analyzed_dir, 
 def analyze_apk(apk_path, apks_decoded_dir, apks_analyzed_dir, apktool_path, lock=None):
     apk = os.path.basename(apk_path)
     decoded_output_path = os.path.join(apks_decoded_dir, apk)
+    api_keys_dump_file = os.path.join(os.path.dirname(apk_path), "apikeys.jsonl")
+
+    print(f"api_keys_dump_file: {api_keys_dump_file}")
+
     try:
         apikeys, all_strings, package, version_code, version_name = apk_analyzer.analyze_apk(apk_path,
                                                                                              decoded_output_path,
@@ -86,6 +90,7 @@ def analyze_apk(apk_path, apks_decoded_dir, apks_analyzed_dir, apktool_path, loc
                 dump = ConsoleDump()
             elif config.dump_location == "jsonlines":
                 dump = JsonlinesDump()
+                dump.setDumpFileForApiKeys(api_keys_dump_file)
             elif config.dump_location == "mongodb":
                 dump = MongoDBDump()
             else:
